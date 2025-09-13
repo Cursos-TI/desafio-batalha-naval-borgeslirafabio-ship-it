@@ -48,39 +48,94 @@ int main() {
 #define TAB_SIZE 10      // Tamanho do tabuleiro (10x10)
 #define SHIP_SIZE 3      // Tamanho fixo dos navios
 
-// Função para verificar se o navio cabe no tabuleiro e não ultrapassa os limites
-bool valida_posicao(int linha, int coluna, bool horizontal) {
-    if (horizontal) {
-        // Verifica se o navio horizontal cabe na linha
-        return (coluna >= 0 && coluna + SHIP_SIZE <= TAB_SIZE && linha >= 0 && linha < TAB_SIZE);
-    } else {
-        // Verifica se o navio vertical cabe na coluna
-        return (linha >= 0 && linha + SHIP_SIZE <= TAB_SIZE && coluna >= 0 && coluna < TAB_SIZE);
+// Enum para orientação dos navios
+typedef enum {
+    HORIZONTAL,
+    VERTICAL,
+    DIAGONAL_DESC,  // Diagonal descendente: linha e coluna aumentam simultaneamente
+    DIAGONAL_ASC    // Diagonal ascendente: linha aumenta e coluna diminui simultaneamente
+} Orientacao;
+
+// Função para validar se o navio cabe no tabuleiro, considerando orientação
+bool valida_posicao(int linha, int coluna, Orientacao orientacao) {
+    switch (orientacao) {
+        case HORIZONTAL:
+            return (linha >= 0 && linha < TAB_SIZE &&
+                    coluna >= 0 && coluna + SHIP_SIZE <= TAB_SIZE);
+        case VERTICAL:
+            return (linha >= 0 && linha + SHIP_SIZE <= TAB_SIZE &&
+                    coluna >= 0 && coluna < TAB_SIZE);
+        case DIAGONAL_DESC:
+            return (linha >= 0 && linha + SHIP_SIZE <= TAB_SIZE &&
+                    coluna >= 0 && coluna + SHIP_SIZE <= TAB_SIZE);
+        case DIAGONAL_ASC:
+            return (linha - SHIP_SIZE + 1 >= 0 && linha < TAB_SIZE &&
+                    coluna >= 0 && coluna + 1 <= TAB_SIZE);
+        default:
+            return false;
     }
 }
 
-// Função para verificar se o navio não se sobrepõe a outro já posicionado
-bool verifica_sobreposicao(int tabuleiro[TAB_SIZE][TAB_SIZE], int linha, int coluna, bool horizontal) {
+// Função para verificar sobreposição do navio no tabuleiro
+bool verifica_sobreposicao(int tabuleiro[TAB_SIZE][TAB_SIZE], int linha, int coluna, Orientacao orientacao) {
     for (int i = 0; i < SHIP_SIZE; i++) {
-        int l = linha + (horizontal ? 0 : i);
-        int c = coluna + (horizontal ? i : 0);
+        int l, c;
+        switch (orientacao) {
+            case HORIZONTAL:
+                l = linha;
+                c = coluna + i;
+                break;
+            case VERTICAL:
+                l = linha + i;
+                c = coluna;
+                break;
+            case DIAGONAL_DESC:
+                l = linha + i;
+                c = coluna + i;
+                break;
+            case DIAGONAL_ASC:
+                l = linha - i;
+                c = coluna + i;
+                break;
+            default:
+                return true; // Orientação inválida
+        }
         if (tabuleiro[l][c] == 3) {
-            return true; // Já existe navio nessa posição
+            return true; // Posição já ocupada
         }
     }
     return false;
 }
 
 // Função para posicionar o navio no tabuleiro
-void posiciona_navio(int tabuleiro[TAB_SIZE][TAB_SIZE], int linha, int coluna, bool horizontal) {
+void posiciona_navio(int tabuleiro[TAB_SIZE][TAB_SIZE], int linha, int coluna, Orientacao orientacao) {
     for (int i = 0; i < SHIP_SIZE; i++) {
-        int l = linha + (horizontal ? 0 : i);
-        int c = coluna + (horizontal ? i : 0);
-        tabuleiro[l][c] = 3; // Marca posição do navio com 3
+        int l, c;
+        switch (orientacao) {
+            case HORIZONTAL:
+                l = linha;
+                c = coluna + i;
+                break;
+            case VERTICAL:
+                l = linha + i;
+                c = coluna;
+                break;
+            case DIAGONAL_DESC:
+                l = linha + i;
+                c = coluna + i;
+                break;
+            case DIAGONAL_ASC:
+                l = linha - i;
+                c = coluna + i;
+                break;
+            default:
+                return; // Orientação inválida
+        }
+        tabuleiro[l][c] = 3; // Marca posição do navio
     }
 }
 
-// Função para exibir o tabuleiro no console
+// Função para exibir o tabuleiro formatado
 void exibe_tabuleiro(int tabuleiro[TAB_SIZE][TAB_SIZE]) {
     printf("Tabuleiro Batalha Naval (0 = água, 3 = navio):\n\n");
     for (int i = 0; i < TAB_SIZE; i++) {
@@ -95,48 +150,45 @@ int main() {
     // Inicializa o tabuleiro com 0 (água)
     int tabuleiro[TAB_SIZE][TAB_SIZE] = {0};
 
-    // Define coordenadas iniciais dos navios (linha, coluna)
-    // Navio 1: horizontal
-    int navio1_linha = 2;
-    int navio1_coluna = 3;
-    bool navio1_horizontal = true;
+    // Definição dos navios: linha, coluna, orientação
+    // Dois navios horizontais/verticais
+    int navio1_linha = 1, navio1_coluna = 2;
+    Orientacao navio1_orientacao = HORIZONTAL;
 
-    // Navio 2: vertical
-    int navio2_linha = 5;
-    int navio2_coluna = 7;
-    bool navio2_horizontal = false;
+    int navio2_linha = 5, navio2_coluna = 7;
+    Orientacao navio2_orientacao = VERTICAL;
 
-    // Valida e posiciona navio 1
-    if (!valida_posicao(navio1_linha, navio1_coluna, navio1_horizontal)) {
-        printf("Posição do navio 1 inválida!\n");
-        return 1;
+    // Dois navios diagonais
+    int navio3_linha = 0, navio3_coluna = 0; // diagonal descendente
+    Orientacao navio3_orientacao = DIAGONAL_DESC;
+
+    int navio4_linha = 9, navio4_coluna = 0; // diagonal ascendente
+    Orientacao navio4_orientacao = DIAGONAL_ASC;
+
+    // Array para facilitar iteração
+    int linhas[4] = {navio1_linha, navio2_linha, navio3_linha, navio4_linha};
+    int colunas[4] = {navio1_coluna, navio2_coluna, navio3_coluna, navio4_coluna};
+    Orientacao orientacoes[4] = {navio1_orientacao, navio2_orientacao, navio3_orientacao, navio4_orientacao};
+
+    // Posiciona os navios com validação
+    for (int i = 0; i < 4; i++) {
+        if (!valida_posicao(linhas[i], colunas[i], orientacoes[i])) {
+            printf("Posição do navio %d inválida!\n", i + 1);
+            return 1;
+        }
+        if (verifica_sobreposicao(tabuleiro, linhas[i], colunas[i], orientacoes[i])) {
+            printf("Navio %d sobrepõe outro navio!\n", i + 1);
+            return 1;
+        }
+        posiciona_navio(tabuleiro, linhas[i], colunas[i], orientacoes[i]);
     }
 
-    if (verifica_sobreposicao(tabuleiro, navio1_linha, navio1_coluna, navio1_horizontal)) {
-        printf("Navio 1 sobrepõe outro navio!\n");
-        return 1;
-    }
-
-    posiciona_navio(tabuleiro, navio1_linha, navio1_coluna, navio1_horizontal);
-
-    // Valida e posiciona navio 2
-    if (!valida_posicao(navio2_linha, navio2_coluna, navio2_horizontal)) {
-        printf("Posição do navio 2 inválida!\n");
-        return 1;
-    }
-
-    if (verifica_sobreposicao(tabuleiro, navio2_linha, navio2_coluna, navio2_horizontal)) {
-        printf("Navio 2 sobrepõe outro navio!\n");
-        return 1;
-    }
-
-    posiciona_navio(tabuleiro, navio2_linha, navio2_coluna, navio2_horizontal);
-
-    // Exibe o tabuleiro com os navios posicionados
+    // Exibe o tabuleiro final
     exibe_tabuleiro(tabuleiro);
 
     return 0;
 }
+
 
 
 
